@@ -128,7 +128,7 @@ def chi2test(data, datatype='data', alpha=BASEALPHA):
         'chi2': chi2exp,
         'av': xav,
         'std': xstd,
-        'H0': chi2exp < chi2Cr
+        'H0': chi2exp < chi2Cr,
         'H1': chi2exp > chi2Cr
     }
 
@@ -161,7 +161,7 @@ def conf_level(data, method='std'):
         conf_upper = mean + tstud*variance/np.sqrt(n)
     elif method == 'std':
         # calculate using standard deviation
-        tstud = t.ppf(1 - self.alpha/2, n - 1)
+        tstud = t.ppf(1 - BASEALPHA/2, n - 1)
         conf_range = tstud * std / np.sqrt(n)
         conf_lower = mean - conf_range
         conf_upper = mean + conf_range
