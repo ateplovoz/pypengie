@@ -1,15 +1,19 @@
-'''
+# -*- coding: utf-8 -*-
+"""
 tdyn.py
 
 Module with thermodynamics functions
 
 ---
 Created: Vadim Pribylov, 2018-10-19
-'''
+"""
 
+import math
 
-def Cp_methane(t_start, t_end, afr, use_new=False):
-    '''
+AIR_R = 287.06 # [J/(kg K)]
+
+def cp_methane(t_start, t_end, afr, use_new=False):
+    """
     Calculates specific heat of combustion products of natural gas.
 
     Args:
@@ -21,7 +25,11 @@ def Cp_methane(t_start, t_end, afr, use_new=False):
 
     Returns:
         float - specific isobaric heat of gas mixture
-    '''
+    """
+    # TODO: update style and give more clarity that this function can be used
+    # to calculate specific heat of air.
+    # TODO: change calculations to integrate specific heat instead of averaging
+    # between Cp(t_start) and Cp(t_end).
 
     gas_coef = {
         'air': [.252192, -.593306, 11.2026, -76.8453, 276.44, -515.04, 392.2],
@@ -101,3 +109,143 @@ def Cp_methane(t_start, t_end, afr, use_new=False):
             cp += poly*pow(ts, i)*(i+1)
             i += 1
         return cp*4186.8
+
+
+def air_h(temperature, **kwargs):
+    """
+    Calculates specific enthalpy (enthalpy from 0 °C to `temperature`) of air
+    based on temperature and pressure
+
+    Source:
+        Бурцев С. И. and Цветков, Ю. Н.
+        Влажный воздух. Состав и свойства. Учебное пособие.
+        Санкт-Петербург: СПбГАХПТ, 1998
+        ISBN 5-89565-005-8
+
+    Arguments
+    ------
+    temperature: float [K]
+        temperature of air
+
+    Kwargs
+    ------
+    use_new: bool
+        if True then uses new tables to calculate specific isobaric heat of air
+
+    Returns
+    ------
+    specific enthalpy [J/kg]
+    """
+    # TODO: generalize function so it can take any two of three arguments
+    # (temperature, pressure, enthalpy) and calculate the unknown
+    if 'use_new' in kwargs:
+        air_cp = cp_methane(0, temperature - 273.15, 0, use_new=True)
+    else:
+        air_cp = cp_methane(0, temperature - 273.15, 0)
+    return temperature * air_cp
+
+def air_stp(temperature, pressure, **kwargs):
+    """
+    Calculates specific enthalpy (enthalpy from 0 °C to `temperature`) of air
+    based on temperature and pressure
+
+    Arguments
+    ------
+    temperature: float [K]
+        temperature of air
+    pressure: float [Pa]
+        pressure of air
+
+    Kwargs
+    ------
+    use_new: bool
+        if True then uses new tables to calculate specific isobaric heat of air
+
+    Returns
+    ------
+    specific entropy [J/(kg K)]
+    """
+
+    if 'use_new' in kwargs:
+        air_cp = cp_methane(0, temperature, 0, use_new=True)
+    else:
+        air_cp = cp_methane(0, temperature, 0)
+    return (
+        air_cp*math.log(temperature/273.15) - AIR_R*math.log(pressure/101325)
+    )
+
+
+def air_tsp(entropy, pressure, init_temp, **kwargs):
+    """
+    Calculates temperature of air based on specific entropy and pressure
+
+    Arguments
+    ------
+    entropy: float [J/(kg K)]
+        specific entropy of air
+    pressure: float [Pa]
+        pressure of air
+    init_temp: float [K]
+        initial temperature, for specific heat calculation
+
+    Kwargs
+    ------
+    use_new: bool
+        if True then uses new tables to calculate specific isobaric heat of air
+    use_kj: bool
+        if True then uses kilojoules to work around floating point limit
+
+    Returns
+    ------
+    temperature [K]
+        temperature of the air
+    """
+    # TODO: write a paper about this
+
+    if 'use_new' in kwargs:
+        air_cp = cp_methane(0, init_temp, 0, use_new=True)
+    else:
+        air_cp = cp_methane(0, init_temp, 0)
+    if 'use_kj' in kwargs:
+        air_cp = air_cp/1000
+        return (
+            (
+                math.e**(entropy/1000) * (pressure/101325)**(AIR_R/1000)
+            )**(1/air_cp) * 273.15
+        )
+    else:
+        return (
+            (math.e**entropy * (pressure/101325)**AIR_R)**(1/air_cp) * 273.15
+        )
+
+
+def air_pst(entropy, temperature, **kwargs):
+    """
+    Calculates pressure of air based on specific entropy and temperature
+
+    Arguments
+    ------
+    entropy: float [J/(kg K)]
+        specific entropy of air
+    temperature: float [K]
+        temperature of air
+
+    Kwargs
+    ------
+    use_new: bool
+        if True then uses new tables to calculate specific isobaric heat of air
+
+    Returns
+    ------
+    pressure [Pa]
+        pressure of the air
+    """
+    # TODO: write a paper about this
+
+    if 'use_new' in kwargs:
+        air_cp = cp_methane(0, temperature, 0, use_new=True)
+    else:
+        air_cp = cp_methane(0, temperature, 0)
+    return (
+        (math.e**-entropy * (temperature/273.15)**air_cp)**(1/AIR_R) * 101325
+    )
